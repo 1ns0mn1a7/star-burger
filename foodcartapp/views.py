@@ -74,8 +74,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'quantity']
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    products = OrderItemSerializer(many=True, allow_empty=False)
+class OrderCreateSerializer(serializers.ModelSerializer):
+    products = OrderItemSerializer(many=True, allow_empty=False, write_only=True)
 
     class Meta:
         model = Order
@@ -98,9 +98,16 @@ class OrderSerializer(serializers.ModelSerializer):
         return order
 
 
+class OrderReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'created_at']
+
+
 class RegisterOrderView(APIView):
     def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        order = serializer.save()
-        return Response({'status': 'ok', 'order_id': order.id}, status=status.HTTP_201_CREATED)
+        order_serializer = OrderCreateSerializer(data=request.data)
+        order_serializer.is_valid(raise_exception=True)
+        order = order_serializer.save()
+        serialized_order = OrderReadSerializer(order).data
+        return Response(serialized_order, status=status.HTTP_201_CREATED)
