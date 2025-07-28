@@ -149,12 +149,7 @@ class Order(models.Model):
         (STATUS_DELIVERING, 'Доставляется'),
         (STATUS_COMPLETED, 'Завершен'),
     ]
-    
-    firstname = models.CharField('Имя', max_length=20, db_index=True)
-    lastname = models.CharField('Фамилия', max_length=30, db_index=True)
-    phonenumber = PhoneNumberField('Телефон', db_index=True)
-    address = models.CharField('Адрес', max_length=200)
-    created_at = models.DateTimeField('Создан', auto_now_add=True, db_index=True)
+
     status = models.CharField(
         'Статус',
         max_length=20,
@@ -162,6 +157,13 @@ class Order(models.Model):
         default=STATUS_UNPROCESSED,
         db_index=True
     )
+    firstname = models.CharField('Имя', max_length=20, db_index=True)
+    lastname = models.CharField('Фамилия', max_length=30, db_index=True)
+    phonenumber = PhoneNumberField('Телефон', db_index=True)
+    address = models.CharField('Адрес', max_length=200)
+    created_at = models.DateTimeField('Создан', auto_now_add=True, db_index=True)
+    called_at = models.DateTimeField('Дата звонка', null=True, blank=True)
+    delivered_at = models.DateTimeField('Дата доставки', null=True, blank=True)
     comment = models.TextField('Комментарий', blank=True)
 
     objects = OrderQuerySet.as_manager()
