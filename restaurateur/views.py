@@ -95,13 +95,13 @@ def view_restaurants(request):
 def view_orders(request):
     orders = (
         Order.objects
+        .with_total_price()
         .prefetch_related(
             Prefetch(
                 'items',
                 queryset=OrderItem.objects.select_related('product')
             )
         )
-        .order_by('-created_at')
     )
     
     return render(

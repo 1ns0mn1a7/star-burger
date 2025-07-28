@@ -15,6 +15,7 @@
       <thead>
         <tr>
           <th>ID заказа</th>
+          <th>Стоимость заказа</th>
           <th>Клиент</th>
           <th>Телефон</th>
           <th>Адрес доставки</th>
@@ -24,6 +25,7 @@
         {% for order in orders %}
           <tr>
             <td>{{ order.id }}</td>
+            <td>{{ order.total_price }} ₽</td>
             <td>{{ order.firstname }} {{ order.lastname }}</td>
             <td>{{ order.phonenumber }}</td>
             <td>{{ order.address }}</td>
