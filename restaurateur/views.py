@@ -102,6 +102,8 @@ def view_orders(request):
                 queryset=OrderItem.objects.select_related('product')
             )
         )
+        .exclude(status=Order.STATUS_COMPLETED)
+        .order_by('-created_at')
     )
     
     return render(
