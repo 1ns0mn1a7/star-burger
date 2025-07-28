@@ -1,8 +1,11 @@
+import json
 from django.http import JsonResponse
 from django.templatetags.static import static
 
 
 from .models import Product
+from .models import Order
+from .models import OrderItem
 
 
 def banners_list_api(request):
@@ -58,5 +61,27 @@ def product_list_api(request):
 
 
 def register_order(request):
-    # TODO это лишь заглушка
-    return JsonResponse({})
+    if request.method == 'POST':
+        try:
+            order_json = json.loads(request.body)
+            print(order_json)
+
+            order = Order.objects.create(
+                firstname=order_json['firstname'],
+                lastname=order_json['lastname'],
+                phonenumber=order_json['phonenumber'],
+                address=order_json['address']
+            )
+
+            for item in order_json['products']:
+                product = Product.objects.get(id=item['product'])
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=item['quantity']
+                )
+
+            return JsonResponse({'status': 'ok', 'order_id': order.id})
+        except Exception as eror:           
+            return JsonResponse({'error': str(eror)}, status=400)  
+    return JsonResponse({'error': 'Only POST allowed'}, status=405)
