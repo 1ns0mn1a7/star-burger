@@ -149,7 +149,7 @@ class Order(models.Model):
         (STATUS_DELIVERING, 'Доставляется'),
         (STATUS_COMPLETED, 'Завершен'),
     ]
-
+    
     firstname = models.CharField('Имя', max_length=20, db_index=True)
     lastname = models.CharField('Фамилия', max_length=30, db_index=True)
     phonenumber = PhoneNumberField('Телефон', db_index=True)
@@ -162,6 +162,7 @@ class Order(models.Model):
         default=STATUS_UNPROCESSED,
         db_index=True
     )
+    comment = models.TextField('Комментарий', blank=True)
 
     objects = OrderQuerySet.as_manager()
 
