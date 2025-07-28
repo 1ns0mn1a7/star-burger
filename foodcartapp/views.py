@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+import phonenumbers
+
 from .models import Product
 from .models import Order
 from .models import OrderItem
@@ -67,24 +69,43 @@ class RegisterOrderView(APIView):
         order_payload = request.data
 
         try:
-            products = self._validate_products(order_payload.get('products'))
+            self._validate_order_fields(order_payload)
         except ValueError as error:
             return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            order = Order.objects.create(
-                firstname=order_payload['firstname'],
-                lastname=order_payload['lastname'],
-                phonenumber=order_payload['phonenumber'],
-                address=order_payload['address']
-            )
-        except KeyError as error:
-            return Response(
-                {'error': f'Отсутствует обязательное поле: {error.args[0]}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            products = self._validate_products(order_payload.get('products'))
+        except ValueError as error:
+            return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = Order.objects.create(
+            firstname=order_payload['firstname'],
+            lastname=order_payload['lastname'],
+            phonenumber=order_payload['phonenumber'],
+            address=order_payload['address']
+        )
+
         self._add_order_items(order, products)
+
         return Response({'status': 'ok', 'order_id': order.id}, status=status.HTTP_201_CREATED)
+
+    def _validate_order_fields(self, payload):
+        required_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+        for field in required_fields:
+            if field not in payload:
+                raise ValueError(f'{field}: Обязательное поле.')
+            value = payload[field]
+            if value is None or (isinstance(value, str) and not value.strip()):
+                raise ValueError(f'{field}: Это поле не может быть пустым.')
+            if not isinstance(value, str):
+                raise ValueError(f'{field}: Not a valid string.')
+
+        try:
+            phone = phonenumbers.parse(payload['phonenumber'], None)
+            if not phonenumbers.is_valid_number(phone):
+                raise ValueError('phonenumber: Введен некорректный номер телефона.')
+        except phonenumbers.NumberParseException:
+            raise ValueError('phonenumber: Введен некорректный номер телефона.')
 
     def _validate_products(self, products):
         if products is None:
@@ -92,7 +113,7 @@ class RegisterOrderView(APIView):
         if not isinstance(products, list):
             raise ValueError(f'products: Ожидался list со значениями, но был получен "{type(products).__name__}".')
         if not products:
-            raise ValueError('products: Список не должен быть пустым.')
+            raise ValueError('products: Этот список не может быть пустым.')
 
         validated = []
         for index, item in enumerate(products, start=1):
@@ -101,14 +122,12 @@ class RegisterOrderView(APIView):
                 quantity = int(item['quantity'])
             except (KeyError, ValueError):
                 raise ValueError(f'Неверные данные в товаре №{index}.')
-
             if quantity <= 0:
                 raise ValueError(f'Количество товара №{index} должно быть больше 0.')
             try:
                 product = Product.objects.get(id=product_id)
             except Product.DoesNotExist:
                 raise ValueError(f'Товар с id={product_id} не найден.')
-
             validated.append((product, quantity))
         return validated
 
