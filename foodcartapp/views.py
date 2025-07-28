@@ -4,6 +4,7 @@ from django.templatetags.static import static
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import serializers
 
 import phonenumbers
 
@@ -64,73 +65,42 @@ def product_list_api(request):
     })
 
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    quantity = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'quantity']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    products = OrderItemSerializer(many=True, allow_empty=False)
+
+    class Meta:
+        model = Order
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+
+    def validate_phonenumber(self, value):
+        try:
+            phone = phonenumbers.parse(value, None)
+            if not phonenumbers.is_valid_number(phone):
+                raise serializers.ValidationError("phonenumber: Введен некорректный номер телефона.")
+        except phonenumbers.NumberParseException:
+            raise serializers.ValidationError("phonenumber: Введен некорректный номер телефона.")
+        return value
+
+    def create(self, validated_order):
+        products = validated_order.pop('products')
+        order = Order.objects.create(**validated_order)
+        for product_item in products:
+            OrderItem.objects.create(order=order, **product_item)
+        return order
+
+
 class RegisterOrderView(APIView):
     def post(self, request):
-        order_payload = request.data
-
-        try:
-            self._validate_order_fields(order_payload)
-        except ValueError as error:
-            return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            products = self._validate_products(order_payload.get('products'))
-        except ValueError as error:
-            return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
-
-        order = Order.objects.create(
-            firstname=order_payload['firstname'],
-            lastname=order_payload['lastname'],
-            phonenumber=order_payload['phonenumber'],
-            address=order_payload['address']
-        )
-
-        self._add_order_items(order, products)
-
+        serializer = OrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
         return Response({'status': 'ok', 'order_id': order.id}, status=status.HTTP_201_CREATED)
-
-    def _validate_order_fields(self, payload):
-        required_fields = ['firstname', 'lastname', 'phonenumber', 'address']
-        for field in required_fields:
-            if field not in payload:
-                raise ValueError(f'{field}: Обязательное поле.')
-            value = payload[field]
-            if value is None or (isinstance(value, str) and not value.strip()):
-                raise ValueError(f'{field}: Это поле не может быть пустым.')
-            if not isinstance(value, str):
-                raise ValueError(f'{field}: Not a valid string.')
-
-        try:
-            phone = phonenumbers.parse(payload['phonenumber'], None)
-            if not phonenumbers.is_valid_number(phone):
-                raise ValueError('phonenumber: Введен некорректный номер телефона.')
-        except phonenumbers.NumberParseException:
-            raise ValueError('phonenumber: Введен некорректный номер телефона.')
-
-    def _validate_products(self, products):
-        if products is None:
-            raise ValueError('products: Обязательное поле.')
-        if not isinstance(products, list):
-            raise ValueError(f'products: Ожидался list со значениями, но был получен "{type(products).__name__}".')
-        if not products:
-            raise ValueError('products: Этот список не может быть пустым.')
-
-        validated = []
-        for index, item in enumerate(products, start=1):
-            try:
-                product_id = int(item['product'])
-                quantity = int(item['quantity'])
-            except (KeyError, ValueError):
-                raise ValueError(f'Неверные данные в товаре №{index}.')
-            if quantity <= 0:
-                raise ValueError(f'Количество товара №{index} должно быть больше 0.')
-            try:
-                product = Product.objects.get(id=product_id)
-            except Product.DoesNotExist:
-                raise ValueError(f'Товар с id={product_id} не найден.')
-            validated.append((product, quantity))
-        return validated
-
-    def _add_order_items(self, order, products):
-        for product, quantity in products:
-            OrderItem.objects.create(order=order, product=product, quantity=quantity)
