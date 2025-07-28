@@ -136,6 +136,13 @@ class OrderQuerySet(models.QuerySet):
     
 
 class Order(models.Model):
+    CASH = 'cash'
+    ELECTRONIC = 'electronic'
+    PAYMENT_METHOD_CHOICES = [
+        (CASH, 'Наличные'),
+        (ELECTRONIC, 'Картой'),
+    ]
+
     STATUS_UNPROCESSED = 'unprocessed'
     STATUS_CONFIRMED = 'confirmed'
     STATUS_PREPARING = 'preparing'
@@ -165,6 +172,12 @@ class Order(models.Model):
     called_at = models.DateTimeField('Дата звонка', null=True, blank=True)
     delivered_at = models.DateTimeField('Дата доставки', null=True, blank=True)
     comment = models.TextField('Комментарий', blank=True)
+    payment_method = models.CharField(
+        'Способ оплаты',
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default=CASH,
+    )
 
     objects = OrderQuerySet.as_manager()
 
