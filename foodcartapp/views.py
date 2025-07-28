@@ -2,6 +2,9 @@ import json
 from django.http import JsonResponse
 from django.templatetags.static import static
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 from .models import Product
 from .models import Order
@@ -60,20 +63,19 @@ def product_list_api(request):
     })
 
 
-def register_order(request):
-    if request.method == 'POST':
+class RegisterOrderView(APIView):
+    def post(self, request):
         try:
-            order_json = json.loads(request.body)
-            print(order_json)
+            order_payload = request.data
 
             order = Order.objects.create(
-                firstname=order_json['firstname'],
-                lastname=order_json['lastname'],
-                phonenumber=order_json['phonenumber'],
-                address=order_json['address']
+                firstname=order_payload['firstname'],
+                lastname=order_payload['lastname'],
+                phonenumber=order_payload['phonenumber'],
+                address=order_payload['address']
             )
 
-            for item in order_json['products']:
+            for item in order_payload['products']:
                 product = Product.objects.get(id=item['product'])
                 OrderItem.objects.create(
                     order=order,
@@ -81,7 +83,7 @@ def register_order(request):
                     quantity=item['quantity']
                 )
 
-            return JsonResponse({'status': 'ok', 'order_id': order.id})
-        except Exception as eror:           
-            return JsonResponse({'error': str(eror)}, status=400)  
-    return JsonResponse({'error': 'Only POST allowed'}, status=405)
+            return Response({'status': 'ok', 'order_id': order.id}, status=status.HTTP_201_CREATED)
+        except Exception as error:           
+            return Response({'error': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        
