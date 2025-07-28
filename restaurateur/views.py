@@ -9,7 +9,7 @@ from django.contrib.auth import views as auth_views
 
 from django.db.models import Prefetch
 
-from foodcartapp.models import Product, Restaurant, Order, OrderItem
+from foodcartapp.models import Product, Restaurant, Order, OrderItem, RestaurantMenuItem
 
 
 class Login(forms.Form):
@@ -105,9 +105,31 @@ def view_orders(request):
         .exclude(status=Order.STATUS_COMPLETED)
         .order_by('-created_at')
     )
-    
+
+    unprocessed_orders = orders.filter(status=Order.STATUS_UNPROCESSED)
+    active_orders = orders.exclude(status=Order.STATUS_UNPROCESSED)
+
+    menu_items = list(
+        RestaurantMenuItem.objects.filter(availability=True)
+        .values('restaurant_id', 'product_id')
+    )
+    restaurants = {
+        restaurant.id: restaurant.name
+        for restaurant in Restaurant.objects.all()
+    }
+
+    for order in unprocessed_orders:
+        order.possible_restaurants = order.get_possible_restaurants(menu_items, restaurants)
+    for order in active_orders:
+        order.possible_restaurants = order.get_possible_restaurants(menu_items, restaurants)
+
     return render(
         request,
         template_name='order_items.html',
-        context={'orders': orders}
+        context={
+            'unprocessed_orders': unprocessed_orders,
+            'active_orders': active_orders,
+            'menu_items': menu_items,
+            'restaurants': restaurants
+        }
     )

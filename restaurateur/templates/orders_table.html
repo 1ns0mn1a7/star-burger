@@ -1,0 +1,51 @@
+<table class="table table-responsive">
+  <thead>
+    <tr>
+      <th>ID заказа</th>
+      <th>Статус</th>
+      <th>Оплата</th>
+      <th>Стоимость</th>
+      <th>Клиент</th>
+      <th>Телефон</th>
+      <th>Адрес</th>
+      <th>Рестораны</th>
+      <th>Администрирование</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+      <tr>
+        <td>{{ order.id }}</td>
+        <td>{{ order.get_status_display }}</td>
+        <td>{{ order.get_payment_method_display }}</td>
+        <td>{{ order.total_price }} ₽</td>
+        <td>{{ order.firstname }} {{ order.lastname }}</td>
+        <td>{{ order.phonenumber }}</td>
+        <td>{{ order.address }}</td>
+        <td>
+          {% if order.cooking_restaurant %}
+            <p>Готовится в {{ order.cooking_restaurant.name }}</p>
+          {% elif order.possible_restaurants %}
+            <details>
+              <summary>Доступные рестораны:</summary>
+              <ul>
+                {% for restaurant in order.possible_restaurants %}
+                  <li>{{ restaurant.name }}</li>
+                {% endfor %}
+              </ul>
+            </details>
+          {% else %}
+            Нет доступных ресторанов
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'admin:foodcartapp_order_change' order.id %}?next={{ request.get_full_path|urlencode }}">
+            Редактировать
+          </a>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9">Заказов нет</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

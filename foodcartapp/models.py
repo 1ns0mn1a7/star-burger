@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
 
 from django.db.models import Sum, F
+from collections import Counter
 
 
 class Restaurant(models.Model):
@@ -164,6 +165,20 @@ class Order(models.Model):
         default=STATUS_UNPROCESSED,
         db_index=True
     )
+    payment_method = models.CharField(
+        'Способ оплаты',
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default=CASH,
+    )
+    cooking_restaurant = models.ForeignKey(
+        'Restaurant',
+        verbose_name='Готовит ресторан',
+        related_name='orders',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
     firstname = models.CharField('Имя', max_length=20, db_index=True)
     lastname = models.CharField('Фамилия', max_length=30, db_index=True)
     phonenumber = PhoneNumberField('Телефон', db_index=True)
@@ -172,12 +187,6 @@ class Order(models.Model):
     called_at = models.DateTimeField('Дата звонка', null=True, blank=True)
     delivered_at = models.DateTimeField('Дата доставки', null=True, blank=True)
     comment = models.TextField('Комментарий', blank=True)
-    payment_method = models.CharField(
-        'Способ оплаты',
-        max_length=20,
-        choices=PAYMENT_METHOD_CHOICES,
-        default=CASH,
-    )
 
     objects = OrderQuerySet.as_manager()
 
@@ -185,6 +194,34 @@ class Order(models.Model):
         verbose_name = 'заказ'
         verbose_name_plural = 'заказы'
         ordering = ['-created_at']
+
+    def get_possible_restaurants(self, restaurant_menu_items, restaurants):
+        order_product_ids = {item.product_id for item in self.items.all()}
+        
+        restaurant_product_counts = Counter(
+            menu_item['restaurant_id']
+            for menu_item in restaurant_menu_items
+            if menu_item['product_id'] in order_product_ids
+        )
+
+        full_restaurant_ids = [
+            restaurant_id for restaurant_id, count in restaurant_product_counts.items()
+            if count == len(order_product_ids)
+        ]
+
+        possible_restaurants = []
+        for restaurant_id in full_restaurant_ids:
+            restaurant_name = restaurants.get(restaurant_id, "Неизвестный ресторан")
+            possible_restaurants.append({
+                'id': restaurant_id,
+                'name': restaurant_name
+            })
+        return possible_restaurants
+
+    def save(self, *args, **kwargs):
+        if self.cooking_restaurant and self.status == self.STATUS_UNPROCESSED:
+            self.status = self.STATUS_PREPARING
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} ({self.created_at})"
