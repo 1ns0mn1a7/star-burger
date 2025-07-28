@@ -8,6 +8,8 @@ from rest_framework import serializers
 
 import phonenumbers
 
+from django.db import transaction
+
 from .models import Product
 from .models import Order
 from .models import OrderItem
@@ -92,9 +94,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_order):
         products = validated_order.pop('products')
-        order = Order.objects.create(**validated_order)
-        for product_item in products:
-            OrderItem.objects.create(order=order, **product_item)
+        with transaction.atomic():
+            order = Order.objects.create(**validated_order)
+            for product_item in products:
+                OrderItem.objects.create(order=order, **product_item)
         return order
 
 
