@@ -167,10 +167,24 @@ class OrderItem(models.Model):
         on_delete=models.CASCADE,
     )
     quantity = models.PositiveIntegerField('количество', validators=[MinValueValidator(1)])
+    price = models.DecimalField(
+        'цена',
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        default=0
+    )
 
     class Meta:
         verbose_name = 'позиция заказа'
         verbose_name_plural = 'позиция заказа'
+
+    
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.price in (None, 0):
+            self.price = self.product.price
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.product.name} (x{self.quantity})"
