@@ -11,22 +11,29 @@
   <br/>
   <br/>
   <div class="container">
-   <table class="table table-responsive">
-    <tr>
-      <th>ID заказа</th>
-      <th>Клиент</th>
-      <th>Телефон</th>
-      <th>Адрес доставки</th>
-    </tr>
-
-    {% for item in order_items %}
-      <tr>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-      </tr>
-    {% endfor %}
-   </table>
+    <table class="table table-responsive">
+      <thead>
+        <tr>
+          <th>ID заказа</th>
+          <th>Клиент</th>
+          <th>Телефон</th>
+          <th>Адрес доставки</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>{{ order.id }}</td>
+            <td>{{ order.firstname }} {{ order.lastname }}</td>
+            <td>{{ order.phonenumber }}</td>
+            <td>{{ order.address }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4">Заказов пока нет</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 {% endblock %}
