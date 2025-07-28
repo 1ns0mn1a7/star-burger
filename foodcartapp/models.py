@@ -138,7 +138,7 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Заказ {self.id} от {self.firstname} {self.lastname} ({self.created_at})"
-    
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(

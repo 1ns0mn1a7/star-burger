@@ -119,4 +119,3 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     search_fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address']
     list_filter = ['created_at']
-    
