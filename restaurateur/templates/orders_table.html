@@ -30,7 +30,12 @@
               <summary>Доступные рестораны:</summary>
               <ul>
                 {% for restaurant in order.possible_restaurants %}
-                  <li>{{ restaurant.name }}</li>
+                  <li>
+                    {{ restaurant.name }}
+                    {% if restaurant.distance is not None %}
+                      — {{ restaurant.distance }} км
+                    {% endif %}
+                  </li>
                 {% endfor %}
               </ul>
             </details>

@@ -4,6 +4,8 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from django.db.models import Sum, F
 from collections import Counter
+from geopy.distance import geodesic
+from utils.geocoder import get_coordinates
 
 
 class Restaurant(models.Model):
@@ -20,6 +22,12 @@ class Restaurant(models.Model):
         'контактный телефон',
         max_length=50,
         blank=True,
+    )
+    coordinates = models.JSONField(
+        'координаты',
+        null=True,
+        blank=True,
+        help_text='Широта и долгота в формате [lat, lon]'
     )
 
     class Meta:
@@ -195,7 +203,7 @@ class Order(models.Model):
         verbose_name_plural = 'заказы'
         ordering = ['-created_at']
 
-    def get_possible_restaurants(self, restaurant_menu_items, restaurants):
+    def get_possible_restaurants(self, restaurant_menu_items, restaurants, coordinates=None):
         order_product_ids = {item.product_id for item in self.items.all()}
         
         restaurant_product_counts = Counter(
@@ -205,17 +213,33 @@ class Order(models.Model):
         )
 
         full_restaurant_ids = [
-            restaurant_id for restaurant_id, count in restaurant_product_counts.items()
+            restaurant_id 
+            for restaurant_id, count in restaurant_product_counts.items()
             if count == len(order_product_ids)
         ]
 
         possible_restaurants = []
         for restaurant_id in full_restaurant_ids:
-            restaurant_name = restaurants.get(restaurant_id, "Неизвестный ресторан")
+            restaurant = restaurants.get(restaurant_id)    
+            restaurant_name = getattr(restaurant, 'name', 'Неизвестный ресторан')
+            restaurant_coordinates = getattr(restaurant, 'coordinates', None)
+            
+            distance_km = None
+            if coordinates and restaurant_coordinates:
+                try:
+                    client_coords = tuple(map(float, coordinates))
+                    rest_coords = tuple(map(float, restaurant_coordinates))
+                    distance_km = round(geodesic(client_coords, rest_coords).kilometers, 2)          
+                except Exception as error:
+                    print(f"Ошибка расчёта расстояния для заказа {self.id}: {error}")
+                
             possible_restaurants.append({
                 'id': restaurant_id,
-                'name': restaurant_name
+                'name': restaurant_name,
+                'distance': distance_km
             })
+            
+        possible_restaurants.sort(key=lambda x: x['distance'] if x['distance'] is not None else 999999)
         return possible_restaurants
 
     def save(self, *args, **kwargs):

@@ -10,6 +10,8 @@ from django.contrib.auth import views as auth_views
 from django.db.models import Prefetch
 
 from foodcartapp.models import Product, Restaurant, Order, OrderItem, RestaurantMenuItem
+from utils.orders import enrich_orders_with_restaurants
+from places.models import Place
 
 
 class Login(forms.Form):
@@ -113,15 +115,11 @@ def view_orders(request):
         RestaurantMenuItem.objects.filter(availability=True)
         .values('restaurant_id', 'product_id')
     )
-    restaurants = {
-        restaurant.id: restaurant.name
-        for restaurant in Restaurant.objects.all()
-    }
+    restaurants_objects = {r.id: r for r in Restaurant.objects.only('id', 'name', 'coordinates', 'address')}
+    restaurants_for_template = {r.id: r.name for r in restaurants_objects.values()}
 
-    for order in unprocessed_orders:
-        order.possible_restaurants = order.get_possible_restaurants(menu_items, restaurants)
-    for order in active_orders:
-        order.possible_restaurants = order.get_possible_restaurants(menu_items, restaurants)
+    enrich_orders_with_restaurants(unprocessed_orders, menu_items, restaurants_objects)
+    enrich_orders_with_restaurants(active_orders, menu_items, restaurants_objects)
 
     return render(
         request,
@@ -130,6 +128,6 @@ def view_orders(request):
             'unprocessed_orders': unprocessed_orders,
             'active_orders': active_orders,
             'menu_items': menu_items,
-            'restaurants': restaurants
+            'restaurants': restaurants_for_template
         }
     )
