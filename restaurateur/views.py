@@ -11,7 +11,6 @@ from django.db.models import Prefetch
 
 from foodcartapp.models import Product, Restaurant, Order, OrderItem, RestaurantMenuItem
 from utils.orders import enrich_orders_with_restaurants
-from places.models import Place
 
 
 class Login(forms.Form):
