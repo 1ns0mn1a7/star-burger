@@ -228,7 +228,7 @@ class Order(models.Model):
                 try:
                     client_coords = tuple(map(float, coordinates))
                     rest_coords = tuple(map(float, restaurant_coordinates))
-                    distance_km = round(geodesic(client_coords, rest_coords).kilometers, 2)   
+                    distance_km = round(geodesic(client_coords, rest_coords).kilometers, 2)
                 except Exception as error:
                     print(f"Ошибка расчёта расстояния для заказа {self.id}: {error}")
 
@@ -268,8 +268,7 @@ class OrderItem(models.Model):
         'цена',
         max_digits=8,
         decimal_places=2,
-        validators=[MinValueValidator(0)],
-        default=0
+        validators=[MinValueValidator(0)]
     )
 
     class Meta:
