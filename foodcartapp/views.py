@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.templatetags.static import static
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -6,6 +6,11 @@ from rest_framework import status
 
 from .models import Product
 from .serializers import OrderCreateSerializer, OrderReadSerializer
+from django.shortcuts import render
+
+
+def index(request):
+    return HttpResponse("OK")
 
 
 def banners_list_api(request):
