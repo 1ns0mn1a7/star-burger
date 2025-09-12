@@ -2,8 +2,9 @@
 
 Это сайт сети ресторанов Star Burger. Здесь можно заказать превосходные бургеры с доставкой на дом.
 
-![скриншот сайта](https://dvmn.org/filer/canonical/1594651635/686/)
+Рабочая версия: [ссылка](https://star-burger.ru/)
 
+![скриншот сайта](https://dvmn.org/filer/canonical/1594651635/686/)
 
 Сеть Star Burger объединяет несколько ресторанов, действующих под единой франшизой. У всех ресторанов одинаковое меню и одинаковые цены. Просто выберите блюдо из меню на сайте и укажите место доставки. Мы сами найдём ближайший к вам ресторан, всё приготовим и привезём.
 
@@ -12,6 +13,16 @@
 Второй интерфейс предназначен для менеджера. Здесь происходит обработка заказов. Менеджер видит поступившие новые заказы и первым делом созванивается с клиентом, чтобы подтвердить заказ. После оператор выбирает ближайший ресторан и передаёт туда заказ на исполнение. Там всё приготовят и сами доставят еду клиенту.
 
 Третий интерфейс — это админка. Преимущественно им пользуются программисты при разработке сайта. Также сюда заходит менеджер, чтобы обновить меню ресторанов Star Burger.
+
+## Используемые технологии
+
+- **Backend:** Django 5.2 + Gunicorn
+- **Frontend:** Parcel + Node.js
+- **База данных:** PostgreSQL
+- **Web-server:** Nginx
+- **SSL-сертификаты:** Let’s Encrypt (Certbot, автообновление через systemd timer)
+- **Monitoring:** Rollbar (логирование ошибок и деплой-нотификации)
+- **Автодеплой:** Bash-скрипт + systemd
 
 ## Как запустить dev-версию сайта
 
@@ -148,6 +159,83 @@ Parcel будет следить за файлами в каталоге `bundle
 - `DEBUG` — дебаг-режим. Поставьте `False`.
 - `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/5.2/ref/settings/#allowed-hosts)
+
+### Deploy
+
+На сервере есть bash-скрипт `/opt/starburger/deploy_star_burger.sh`, который автоматизирует обновление:
+```bash
+set -euo pipefail
+
+ENV_FILE="/opt/starburger/.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+
+: "${ROLLBAR_ACCESS_TOKEN:?Set ROLLBAR_ACCESS_TOKEN in /opt/starburger/.env}"
+
+cd /opt/starburger
+
+echo ">>> Обновляем код из GitHub..."
+git pull
+
+echo ">>> Обновляем зависимости..."
+/opt/starburger/venv/bin/pip install -r requirements.txt
+
+
+echo ">>> Применяем миграции..."
+/opt/starburger/venv/bin/python manage.py migrate --noinput
+
+echo ">>> Собираем статику..."
+/opt/starburger/venv/bin/python manage.py collectstatic --noinput
+
+echo  ">>> Ставим Node-зависимости и собираем фронтенд..."
+npm ci
+./node_modules/.bin/parcel build  bundles-src/index.js --dist-dir bundles --public-url="./"
+
+echo ">>> Перезапускаем сервисы..."
+systemctl restart starburger.service
+systemctl reload nginx || true
+
+
+echo ">>> Отправляем уведомление в Rollbar..."
+REVISION=$(git rev-parse HEAD)
+
+curl -s https://api.rollbar.com/api/1/deploy/ \
+  -F access_token=$ROLLBAR_ACCESS_TOKEN \
+  -F environment=production \
+  -F revision=$REVISION \
+  -F local_username=$(whoami) > /dev/null
+
+echo ">>> Деплой завершён успешно!"
+```
+
+### Автоматизация
+- **Gunicorn** управляется через systemd (starburger.service).
+- **Nginx** слушает 80/443 и проксирует на Gunicorn.
+- **Certbot** обновляет SSL-сертификаты автоматически (`snap.certbot.renew.timer`).
+- Очистка устаревших Django-сессий раз в месяц через `starburger-clearsessions.timer`.
+
+### PostgreSQL
+Вместо SQLite проект в продакшне работает на PostgreSQL.
+Настройки подключения хранятся в `.env`. Пример:
+```
+DEBUG=False
+SECRET_KEY=django-insecure-0if40nf4nf93n4
+ALLOWED_HOSTS=79.174.81.130,127.0.0.1,localhost,star-burger.ru,www.star-burger.ru
+
+DATABASE_URL=postgres://starburger:password@127.0.0.1:5432/starburger
+ROLLBAR_ACCESS_TOKEN=ваш-rollbar-токен
+```
+
+### Rollbar
+Все ошибки с сервера отправляются в **Rollbar**.
+Кроме того, после каждого деплоя скрипт уведомляет **Rollbar** о новой версии. В интерфейсе **Rollbar** видно:
+
+- когда был деплой,
+- какой коммит выкатился,
+- какой пользователь его сделал.
 
 ## Цели проекта
 
