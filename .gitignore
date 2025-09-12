@@ -143,3 +143,17 @@ cython_debug/
 
 .parcel-cache/
 /staticfiles
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+node_modules/
+venv/
+staticfiles/
+bundles/
+# локальный деплой-скрипт
+deploy_star_burger.sh
+
+# дампы данных
+dump.json
