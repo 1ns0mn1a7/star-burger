@@ -20,8 +20,8 @@ services:
     depends_on:
       - db
     volumes:
-      - /opt/starburger/static:/app/staticfiles
-      - /opt/starburger/media:/app/media
+      - /opt/starburger/star-burger/static:/app/staticfiles
+      - /opt/starburger/star-burger/media:/app/media
       - ./bundles:/app/bundles
 
   frontend:
@@ -44,6 +44,6 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /opt/starburger/static:/var/www/static
-      - /opt/starburger/media:/var/www/media
+      - /opt/starburger/star-burger/static:/var/www/static
+      - /opt/starburger/star-burger/media:/var/www/media
       - ./bundles:/var/www/frontend
