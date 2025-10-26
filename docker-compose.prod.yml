@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    restart: always
+    restart: "no"
     command: npm run build
     volumes:
       - ./bundles-src:/frontend/bundles-src
