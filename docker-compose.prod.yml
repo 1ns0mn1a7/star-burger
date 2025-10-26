@@ -42,9 +42,11 @@ services:
       - frontend
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /opt/starburger/star-burger/static:/var/www/static
       - /opt/starburger/star-burger/media:/var/www/media
       - ./bundles:/var/www/frontend
       - /opt/starburger/certbot/www:/var/www/certbot
+      - /opt/starburger/certbot/conf:/etc/letsencrypt
