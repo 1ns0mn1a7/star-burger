@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: starburger
+      POSTGRES_USER: starburger
+      POSTGRES_PASSWORD: burgerpass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U starburger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+      python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      gunicorn --bind 0.0.0.0:8000 star_burger.wsgi:application
+      "
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    working_dir: /frontend
+    volumes:
+      - ./bundles:/frontend/bundles
+    command: >
+      sh -c "
+      npm ci --dev &&
+      npx parcel build bundles-src/index.js --dist-dir bundles --public-url='./'
+      "
+    restart: "no"
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+      - ./bundles:/var/www/frontend
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
+  static_volume:
+  media_volume:

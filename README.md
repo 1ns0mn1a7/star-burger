@@ -237,6 +237,35 @@ ROLLBAR_ACCESS_TOKEN=ваш-rollbar-токен
 - какой коммит выкатился,
 - какой пользователь его сделал.
 
+## Docker / Docker Compose
+
+Для запуска проекта в контейнерах предусмотрены два окружения:
+- **dev-окружение** - для локальной разработки, с автопересборкой кода;
+- **prod-окружение** - для развёртывания на сервере.
+
+### Запуск в dev-режиме
+
+```bash
+docker compose up --build
+```
+
+Контейнеры:
+- `db` - PostgreSQL
+- `backend` - Django + Gunicorn
+- `frontend` - сборка фронтенда через Parcel
+- `nginx` - отдаёт статику и проксирует запросы к Django
+
+После сборки проект будет доступен по адресу: [http://localhost](http://localhost)
+
+### Запуск прод-версии
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+Сервисы:
+- `db` - база PostgreSQL с volume-томом `pgdata`
+- `backend` - Django + Gunicorn
+- `nginx` - фронтовой сервер, отдаёт `/static/` и `/media/`
+
 ## Цели проекта
 
 Код написан в учебных целях — это урок в курсе по Python и веб-разработке на сайте [Devman](https://dvmn.org). За основу был взят код проекта [FoodCart](https://github.com/Saibharath79/FoodCart).
